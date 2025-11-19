@@ -1,9 +1,10 @@
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI  # <--- Ye zaroori hai
 from langchain_core.prompts import ChatPromptTemplate
 
 def whatsapp_agent_node(state):
-    llm = ChatOpenAI(model="gpt-3.5-turbo")
- 
+
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+    
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a friendly and professional personal assistant. Answer general queries concisely."),
         ("human", "{input}"),
@@ -11,10 +12,8 @@ def whatsapp_agent_node(state):
     
     chain = prompt | llm
     
-    # User ka last message uthao
     last_message = state["messages"][-1].content
     
-    # LLM se reply generate karo
     result = chain.invoke({"input": last_message})
     
     return {"messages": [result]}
