@@ -5,15 +5,20 @@ from langgraph.graph import StateGraph, END
 from typing import TypedDict, Annotated, List
 from langchain_core.messages import BaseMessage
 import operator
-from langchain_core.messages import HumanMessage  # <--- Ye line add karo top par
-from pyngrok import ngrok  # <-- Ye zaroori hai auto-connect ke liye
+from langchain_core.messages import HumanMessage  #
+from pyngrok import ngrok 
+from dotenv import load_dotenv
+
+# Load the .env file
+load_dotenv()
+
 
 # Import Agents
 from agents.manager_agent import manager_node
 from agents.email_agent import email_agent_node
 from agents.calendar_agent import calendar_agent_node
 from agents.research_agent import research_agent_node
-from agents.whatsapp_agent import whatsapp_agent_node # <-- Ye missing tha
+from agents.whatsapp_agent import whatsapp_agent_node 
 
 from tools.whatsapp_sender import send_whatsapp_message
 
@@ -34,7 +39,7 @@ workflow.add_node("manager", manager_node)
 workflow.add_node("email", email_agent_node)
 workflow.add_node("calendar", calendar_agent_node)
 workflow.add_node("research", research_agent_node)
-workflow.add_node("whatsapp", whatsapp_agent_node) # <-- Ye naya node hai
+workflow.add_node("whatsapp", whatsapp_agent_node) 
 
 # Add Edges (Logic)
 workflow.set_entry_point("manager")
@@ -50,7 +55,7 @@ workflow.add_conditional_edges(
         "email": "email",
         "calendar": "calendar",
         "research": "research",
-        "whatsapp": "whatsapp" # <-- Ab ye whatsapp agent ke paas jayega
+        "whatsapp": "whatsapp" 
     }
 )
 
@@ -58,7 +63,7 @@ workflow.add_conditional_edges(
 workflow.add_edge("email", "manager")
 workflow.add_edge("calendar", "manager")
 workflow.add_edge("research", "manager")
-workflow.add_edge("whatsapp", END) # <-- Baat khatam hone par ruk jayega
+workflow.add_edge("whatsapp", END)
 
 app_graph = workflow.compile()
 
@@ -72,12 +77,12 @@ async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...), To: str
 
     inputs = {
         "messages": [HumanMessage(content=Body)],
-        "next_agent": ""  # Initial state mein empty string
+        "next_agent": "" 
     }
     
     output = app_graph.invoke(inputs)
     
-    # Last message nikalo
+
     final_response = output["messages"][-1].content
     
     print(f"📤 Sending reply to {From} via {To}")
@@ -91,19 +96,18 @@ async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...), To: str
 
 if __name__ == "__main__":
     
-    NGROK_AUTH_TOKEN = "35gyrfBDCoYQ6bpNm48TYYnqTuH_5ApBv5A1Wtjt95tcQwNu8" 
-
+    ngroksecret = os.getenv("NGROK_AUTH_TOKEN")
     
     # Ngrok Connect
     try:
-        ngrok.set_auth_token(NGROK_AUTH_TOKEN)
+        ngrok.set_auth_token(ngroksecret)
         public_url = ngrok.connect(5000).public_url
         print("="*60)
         print(f"🚀 PUBLIC URL: {public_url}")
-        print(f"👉 Copy this URL and paste into Twilio Sandbox: {public_url}/whatsapp")
+        print(f"Copy this URL and paste into Twilio Sandbox: {public_url}/whatsapp")
         print("="*60)
     except Exception as e:
-        print(f"⚠️ Ngrok Error: {e}")
+        print(f"Ngrok Error: {e}")
         print("Continuing without auto-ngrok...")
 
     print("🚀 AI Assistant is Running on Port 5000...")

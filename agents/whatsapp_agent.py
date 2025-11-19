@@ -3,8 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 def whatsapp_agent_node(state):
     llm = ChatOpenAI(model="gpt-3.5-turbo")
-    
-    # Tum chaho toh yahan apna naam ya personality change kar sakte ho
+ 
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a friendly and professional personal assistant. Answer general queries concisely."),
         ("human", "{input}"),

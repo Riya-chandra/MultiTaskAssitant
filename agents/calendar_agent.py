@@ -1,7 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
-# Dhyan dena: Hum tools folder se import kar rahe hain
 from tools.calendar_tools import list_events, create_event
 
 def calendar_agent_node(state):

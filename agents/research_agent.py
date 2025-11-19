@@ -1,7 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
-# Hum tools folder se import kar rahe hain
 from tools.linkedin_scraper import web_search, linkedin_research
 
 def research_agent_node(state):
