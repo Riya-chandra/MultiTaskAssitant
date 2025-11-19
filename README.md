@@ -73,7 +73,6 @@ Environment Management: Conda / Python-Dotenv
 1. Clone the Repository
 
 git clone [https://github.com/your-username/MultiTaskAssitant.git](https://github.com/Riya-chandra/MultiTaskAssitant.git)
-cd ai-personal-assistant
 
 
 2. Set up Environment
@@ -152,4 +151,5 @@ Role: AI Engineer
 Focus: Building Autonomous Agents & RAG Systems.
 
 Note: This project is for educational purposes. Ensure you handle your credentials.json and token.json securely.
+
 
