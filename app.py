@@ -1,80 +1,42 @@
-import operator
-from typing import TypedDict, Annotated, List
-from langchain_core.messages import BaseMessage, HumanMessage
-from langgraph.graph import StateGraph, END
+import time
+import sqlite3
 from dotenv import load_dotenv
-from agents.manager_agent import manager_node
-from agents.email_agent import email_agent_node
-from agents.calendar_agent import calendar_agent_node
-from agents.research_agent import research_agent_node
+from src.channels.telegram import TelegramChannel
+from src.agents.personal_assistant import PersonalAssistant
 
-# Load Environment
+# Load .env variables
 load_dotenv()
 
-# --- 1. Define State ---
-class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], operator.add]
-    next_agent: str
+# Initialize sqlite3 DB for saving agent memory
+conn = sqlite3.connect("db/checkpoints.sqlite", check_same_thread=False)
 
-# --- 2. Build Graph ---
-workflow = StateGraph(AgentState)
+# Use telegram for communicating with the agent
+telegram = TelegramChannel()
+# Use Slack for communicating with the agent
+# slack = SlackChannel()
 
-# Add Nodes
-workflow.add_node("manager", manager_node)
-workflow.add_node("email", email_agent_node)
-workflow.add_node("calendar", calendar_agent_node)
-workflow.add_node("research", research_agent_node)
+# Initiate personal assistant
+personal_assistant = PersonalAssistant(conn)
 
-# Add Edges
-workflow.set_entry_point("manager")
+# Configuration for the Langgraph checkpoints, specifying thread ID
+config = {"configurable": {"thread_id": "1"}}
 
-def route_agent(state):
-    return state["next_agent"]
 
-workflow.add_conditional_edges(
-    "manager",
-    route_agent,
-    {
-        "email": "email",
-        "calendar": "calendar",
-        "research": "research"
-    }
-)
-
-workflow.add_edge("email", END)
-workflow.add_edge("calendar", END)
-workflow.add_edge("research", END)
-
-app_graph = workflow.compile()
-
+def monitor_channel(after_timestamp, config):
+    while True:
+        new_messages = telegram.receive_messages(after_timestamp)
+        if new_messages:
+            for message in new_messages:
+                sent_message = (
+                    f"Message: {message['text']}\n"
+                    f"Current Date/time: {message['date']}"
+                )
+                answer = personal_assistant.invoke(sent_message, config=config)
+                telegram.send_message(answer)
+        after_timestamp = int(time.time())
+        time.sleep(5)  # Sleep for 5 seconds before checking again
+        
 
 if __name__ == "__main__":
-    print("="*50)
-    print("🤖 AI Assistant Ready (Type 'quit' to exit)")
-    print("Example: 'Check my unread emails' or 'Schedule a meeting'")
-    print("="*50)
-
-    while True:
-        try:
-            user_input = input("\n👉 You: ")
-            if user_input.lower() in ["quit", "exit", "bye"]:
-                print("Bye! 👋")
-                break
-            
-            # Graph Run Karo
-            inputs = {
-                "messages": [HumanMessage(content=user_input)],
-                "next_agent": ""
-            }
-            
-            # Output Stream Karo
-            for event in app_graph.stream(inputs):
-                for key, value in event.items():
-                    if "messages" in value:
-                        last_msg = value["messages"][-1]
-                        # Sirf final answer print karo
-                        if key != "manager": 
-                            print(f"🤖 Assistant: {last_msg.content}")
-                            
-        except Exception as e:
-            print(f"❌ Error: {e}")
+    print("Personal Assistant Manager is running")
+    monitor_channel(int(time.time()), config)
