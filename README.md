@@ -123,6 +123,7 @@ Run the assistant directly in your command line:
 python app.py
 
 ## Are you ready to see the response
+<img width="1216" height="541" alt="Screenshot 2025-11-21 125932" src="https://github.com/user-attachments/assets/a2d808aa-a1f7-434f-85f2-f9b0798ea397" />
 
 
 🤖 Example Commands
@@ -151,6 +152,7 @@ Role: AI Engineer
 Focus: Building Autonomous Agents & RAG Systems.
 
 Note: This project is for educational purposes. Ensure you handle your credentials.json and token.json securely.
+
 
 
 
