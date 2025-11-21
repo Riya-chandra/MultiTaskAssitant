@@ -114,12 +114,15 @@ Launch the beautiful chat interface:
 
 streamlit run ui.py
 
+mine yet to release!
 
 Option B: Terminal Mode
 
 Run the assistant directly in your command line:
 
 python app.py
+
+## Are you ready to see the response
 
 
 🤖 Example Commands
@@ -132,8 +135,6 @@ Email: "Check my unread emails and summarize them." or "Send an email to xyz@gma
 
 Research: "Who is the CEO of OpenAI?" or "Search for the latest news on Python 3.13."
 
-Complex: "Find the latest AI news and email the summary to my boss." (Requires multi-step reasoning).
-
 🔮 Future Improvements
 
 [ ] Notion Integration: Add a "Note-Taking Agent" to save research directly to Notion.
@@ -142,8 +143,7 @@ Complex: "Find the latest AI news and email the summary to my boss." (Requires m
 
 [ ] Voice Mode: Add Speech-to-Text for voice commands.
 
-👨‍💻 Author
-
+👨‍💻 Author:
 Riya Chandra
 
 Role: AI Engineer
@@ -151,5 +151,6 @@ Role: AI Engineer
 Focus: Building Autonomous Agents & RAG Systems.
 
 Note: This project is for educational purposes. Ensure you handle your credentials.json and token.json securely.
+
 
 
