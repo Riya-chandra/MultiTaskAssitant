@@ -24,6 +24,8 @@ async def process_message_async(to_whatsapp_number, incoming_message):
         
         print("Invoking assistant...")
         answer = personal_assistant.invoke(message, config=config)
+        answer = f"I received your command RIYA: {incoming_message}"
+        
         print(f"Got response: {answer[:100]}...")
         
         print("Sending WhatsApp message...")
