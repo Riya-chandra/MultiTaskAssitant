@@ -9,7 +9,7 @@ from src.utils import get_credentials
 class AddEventToCalendarInput(BaseModel):
     title: str = Field(description="Title of the event")
     description: str = Field(description="Description of the event")
-    start_time: str = Field(description="Start time of the event")
+    start_time: str = Field(description="Start time of the event YYYY-MM-DD or ISO format")
 
 @tool("AddEventToCalendar", args_schema=AddEventToCalendarInput)
 @traceable(run_type="tool", name="AddEventToCalendar")
@@ -19,23 +19,37 @@ def add_event_to_calendar(title: str, description: str, start_time: str):
         creds = get_credentials()
         service = build("calendar", "v3", credentials=creds)
 
+
+        if "T" not in start_time:
+            start_time = start_time + "T10:00:00"  # default 10 AM
         # Convert the string to a datetime object
         event_datetime = datetime.fromisoformat(start_time)
+        end_datetime = event_datetime + timedelta(hours=1)
+        existing_events = service.events().list(
+            calendarId="primary",
+            timeMin=event_datetime.isoformat() + "Z",
+            timeMax=end_datetime.isoformat() + "Z",
+            singleEvents=True,
+            orderBy="startTime"
+        ).execute().get("items", [])
 
+        for event in existing_events:
+            if event.get("summary", "").lower() == title.lower():
+                return f"⚠️ Event already exists: {event.get('htmlLink')}"
         event = {
             'summary': title,
             'description': description,
             'start': {
                 'dateTime': event_datetime.isoformat(),
-                'timeZone': 'UTC',
+                'timeZone': 'Asia/Kolkata',
             },
             'end': {
                 'dateTime': (event_datetime + timedelta(hours=1)).isoformat(),
-                'timeZone': 'UTC',
+                'timeZone': 'Asia/Kolkata',
             },
         }
 
-        event = service.events().insert(calendarId='primary', body=event).execute()
+        created = service.events().insert(calendarId='primary', body=event).execute()
         return f"Event created successfully. Event ID: {event.get('id')}"
 
     except HttpError as error:

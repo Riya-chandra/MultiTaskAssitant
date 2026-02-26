@@ -1,6 +1,7 @@
 from pydantic import Field, create_model
 from .agent import Agent
 from src.tools.send_message import SendMessage
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
 class AgentsOrchestrator:
     def __init__(self, main_agent: Agent, agents: list[Agent]):
@@ -14,13 +15,22 @@ class AgentsOrchestrator:
         
     def invoke(self, message, **kwargs):
         messages = {"messages": [("human", message)]}
-        response = self.main_agent.invoke(messages, **kwargs)
+        safe_kwargs = self._sanitize_kwargs(kwargs)
+        response = self.main_agent.invoke(messages, **safe_kwargs)
         return response["messages"][-1].content
 
     def stream(self, message, **kwargs):
         messages = {"messages": [("human", message)]}
-        for chunk in self.main_agent.stream(messages, **kwargs):
+        safe_kwargs = self._sanitize_kwargs(kwargs)
+        for chunk in self.main_agent.stream(messages, **safe_kwargs):
             yield chunk
+
+    def _sanitize_kwargs(self, kwargs: dict) -> dict:
+        safe_kwargs = dict(kwargs)
+        supports_checkpointer = isinstance(getattr(self.main_agent, "memory", None), BaseCheckpointSaver)
+        if "config" in safe_kwargs and not supports_checkpointer:
+            safe_kwargs.pop("config")
+        return safe_kwargs
 
     def _populate_agent_mapping(self):
         """

@@ -9,9 +9,7 @@ from src.utils import get_current_date_time
 load_dotenv()
 app = FastAPI()
 
-# ✅ No checkpointer for now
 personal_assistant = PersonalAssistant(None)
-config = {}  # Empty config
 
 async def process_message_async(to_whatsapp_number, incoming_message):
     try:
@@ -23,8 +21,8 @@ async def process_message_async(to_whatsapp_number, incoming_message):
         )
         
         print("Invoking assistant...")
-        answer = personal_assistant.invoke(message, config=config)
-        answer = f"I received your command RIYA: {incoming_message}"
+        answer = personal_assistant.invoke(message)
+        # answer = f"I received your command RIYA: {incoming_message}"
         
         print(f"Got response: {answer[:100]}...")
         
@@ -38,7 +36,7 @@ async def process_message_async(to_whatsapp_number, incoming_message):
         print(f"WhatsApp send result: {result}")
         
     except Exception as e:
-        print(f"❌ ERROR: {e}")
+        print(f"ERROR: {e}")
         import traceback
         traceback.print_exc()
 

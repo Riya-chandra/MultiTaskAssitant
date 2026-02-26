@@ -1,99 +1,165 @@
-# import streamlit as st
-# import operator
-# from typing import TypedDict, Annotated, List
-# from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-# from langgraph.graph import StateGraph, END
-# from dotenv import load_dotenv
+import os
+from dotenv import dotenv_values, load_dotenv, set_key
+import streamlit as st
 
-# # --- Import Agents (Tumhare Banaye Hue) ---
-# from agents.manager_agent import manager_node
-# from agents.email_agent import email_agent_node
-# from agents.calendar_agent import calendar_agent_node
-# from agents.research_agent import research_agent_node
+from src.agents.personal_assistant import PersonalAssistant
+from src.utils import get_current_date_time, get_credentials
 
-# # Load Environment
-# load_dotenv()
 
-# # --- 1. Setup Graph (Brain) ---
-# class AgentState(TypedDict):
-#     messages: Annotated[List[BaseMessage], operator.add]
-#     next_agent: str
+load_dotenv()
 
-# workflow = StateGraph(AgentState)
 
-# workflow.add_node("manager", manager_node)
-# workflow.add_node("email", email_agent_node)
-# workflow.add_node("calendar", calendar_agent_node)
-# workflow.add_node("research", research_agent_node)
+def get_env_path() -> str:
+    return os.path.join(os.getcwd(), ".env")
 
-# workflow.set_entry_point("manager")
 
-# def route_agent(state):
-#     return state["next_agent"]
+def save_env_value(key: str, value: str) -> None:
+    env_path = get_env_path()
+    if not os.path.exists(env_path):
+        with open(env_path, "w", encoding="utf-8"):
+            pass
+    set_key(env_path, key, value)
+    os.environ[key] = value
 
-# workflow.add_conditional_edges(
-#     "manager",
-#     route_agent,
-#     {
-#         "email": "email",
-#         "calendar": "calendar",
-#         "research": "research"
-#     }
-# )
 
-# workflow.add_edge("email", END)
-# workflow.add_edge("calendar", END)
-# workflow.add_edge("research", END)
+def read_env_values() -> dict:
+    env_path = get_env_path()
+    if not os.path.exists(env_path):
+        return {}
+    return dotenv_values(env_path)
 
-# app_graph = workflow.compile()
 
-# # --- 2. Streamlit UI Code ---
+@st.cache_resource
+def get_assistant() -> PersonalAssistant:
+    return PersonalAssistant(None)
 
-# st.set_page_config(page_title="My AI Assistant", page_icon="🤖")
 
-# st.title("🤖 Multi Task AI Assistant")
-# st.caption("Managed by: Gemini Pro | Tools: Google Calendar, Gmail, Web Search")
+st.set_page_config(page_title="MultiTask Assistant Dashboard", page_icon="🤖", layout="wide")
 
-# # Session State (Chat History Save karne ke liye)
-# if "messages" not in st.session_state:
-#     st.session_state["messages"] = [
-#         {"role": "assistant", "content": "Hello! I m your personal Assitant Riya Chandra mam.... Mai Email, Calendar aur Research handle kar sakta hu. Boliye kya karu?"}
-#     ]
+st.title("MultiTask Assistant Dashboard")
+st.caption("Set credentials and test natural-language commands for Calendar, Email, and Research")
 
-# # Purane messages dikhao
-# for msg in st.session_state.messages:
-#     st.chat_message(msg["role"]).write(msg["content"])
+with st.sidebar:
+    st.subheader("Status")
+    credentials_exists = os.path.exists("credentials.json")
+    token_exists = os.path.exists("token.json")
+    groq_key_exists = bool(os.getenv("GROQ_API_KEY"))
+    st.write(f"Google OAuth credentials.json: {'✅' if credentials_exists else '❌'}")
+    st.write(f"Google OAuth token.json: {'✅' if token_exists else '❌'}")
+    st.write(f"Groq API key: {'✅' if groq_key_exists else '❌'}")
 
-# # User Input Box
-# user_input = st.chat_input("enter your Query.... (e.g., Check my meetings today)")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Validate Google"):
+            try:
+                get_credentials()
+                st.success("Google OK")
+            except Exception as exc:
+                st.error(f"Google failed: {exc}")
+    
+    with col2:
+        if st.button("Test Groq"):
+            try:
+                from langchain_groq import ChatGroq
+                llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+                llm.invoke("Hi")
+                st.success("Groq OK")
+            except Exception as exc:
+                st.error(f"Groq failed: {exc}")
 
-# if user_input:
-  
-#     st.session_state.messages.append({"role": "user", "content": user_input})
-#     st.chat_message("user").write(user_input)
 
-   
-#     with st.spinner("I m thinking wait mam... 🧠"):
-#         try:
-          
-#             inputs = {
-#                 "messages": [HumanMessage(content=user_input)],
-#                 "next_agent": ""
-#             }
-            
-#             final_response = "Sorry i can't get it Riya mam."
-            
-           
-#             for event in app_graph.stream(inputs):
-#                 for key, value in event.items():
-#                     if "messages" in value:
-#                         last_msg = value["messages"][-1]
-#                         if key != "manager": 
-#                             final_response = last_msg.content
-            
-           
-#             st.session_state.messages.append({"role": "assistant", "content": final_response})
-#             st.chat_message("assistant").write(final_response)
-            
-#         except Exception as e:
-#             st.error(f"Error: {e}")
+st.subheader("1) Setup API Keys")
+env_values = read_env_values()
+
+with st.form("credentials_form"):
+    groq_api_key = st.text_input(
+        "GROQ_API_KEY",
+        value=env_values.get("GROQ_API_KEY", ""),
+        type="password",
+        help="Required by current agents (model: groq/llama-3.3-70b-versatile)",
+    )
+    google_api_key = st.text_input(
+        "GOOGLE_API_KEY",
+        value=env_values.get("GOOGLE_API_KEY", ""),
+        type="password",
+        help="Used for Gemini via langchain-google-genai",
+    )
+    tavily_api_key = st.text_input(
+        "TAVILY_API_KEY",
+        value=env_values.get("TAVILY_API_KEY", ""),
+        type="password",
+        help="Used by web research tools",
+    )
+    save_keys = st.form_submit_button("Save Keys to .env")
+
+if save_keys:
+    try:
+        if groq_api_key:
+            save_env_value("GROQ_API_KEY", groq_api_key)
+        if google_api_key:
+            save_env_value("GOOGLE_API_KEY", google_api_key)
+        if tavily_api_key:
+            save_env_value("TAVILY_API_KEY", tavily_api_key)
+        st.success("Credentials saved to .env")
+    except Exception as exc:
+        st.error(f"Could not save .env values: {exc}")
+
+
+st.subheader("2) Google OAuth Files")
+st.write("Place `credentials.json` in the project root. Then click validate to generate/refresh `token.json`.")
+
+if not credentials_exists:
+    st.warning("`credentials.json` is missing. Calendar and Gmail actions will fail until you add it.")
+
+
+st.subheader("3) Test Assistant Command")
+st.write("Example: Please set up my calendar meeting on 24th March at 4 PM with title Team Sync")
+
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
+command_text = st.text_area(
+    "Enter your command",
+    placeholder="Please set up my calendar meeting on 24th March at 4 PM with title Team Sync",
+    height=120,
+)
+
+if st.button("Run Command", type="primary"):
+    if not command_text.strip():
+        st.warning("Please enter a command first.")
+    else:
+        if not os.getenv("GROQ_API_KEY"):
+            st.error("⚠️ GROQ_API_KEY is not set. Please add it in the credentials section above and reload the page.")
+        elif not os.path.exists("credentials.json"):
+            st.warning("⚠️ credentials.json is missing. Calendar/Email operations may fail.")
+        else:
+            with st.spinner("Running assistant..."):
+                try:
+                    assistant = get_assistant()
+                    message = (
+                        f"Message: {command_text.strip()}\n"
+                        f"Current Date/time: {get_current_date_time()}"
+                    )
+                    answer = assistant.invoke(message)
+                    st.session_state["history"].append(
+                        {
+                            "command": command_text.strip(),
+                            "response": answer,
+                        }
+                    )
+                    st.success("Command executed")
+                except Exception as exc:
+                    error_message = str(exc)
+                    if "401" in error_message or "invalid_api_key" in error_message.lower():
+                        st.error("🔑 **Groq API Key Invalid**\n\nYour GROQ_API_KEY is either wrong, expired, or inactive. Get a valid key from https://console.groq.com/keys and update it in the credentials form above, then refresh this page.")
+                    elif "credentials.json" in error_message.lower() or "token.json" in error_message.lower():
+                        st.error(f"🔐 **Google OAuth Issue**: {error_message}\n\nEnsure credentials.json is present and click 'Validate Google' in the sidebar.")
+                    else:
+                        st.error(f"❌ **Execution failed**: {error_message}")
+
+
+if st.session_state["history"]:
+    st.subheader("Recent Tests")
+    for item in reversed(st.session_state["history"][-5:]):
+        with st.expander(item["command"]):
+            st.write(item["response"])

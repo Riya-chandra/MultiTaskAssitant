@@ -1,5 +1,8 @@
 from typing import List
-from langgraph.prebuilt import create_react_agent
+try:
+    from langgraph.prebuilt.chat_agent_executor import create_react_agent
+except ImportError:
+    from langgraph.prebuilt import create_react_agent
 from src.utils import get_llm_by_provider
 
 class Agent:
@@ -54,6 +57,6 @@ class Agent:
         self.agent = create_react_agent(
             llm,
             self.tools,
-            messages_modifier=self.system_prompt,
+            prompt=self.system_prompt,
             checkpointer=checkpointer  # Only pass if valid
         )

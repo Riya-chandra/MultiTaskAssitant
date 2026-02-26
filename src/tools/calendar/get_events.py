@@ -65,13 +65,13 @@ def get_calendar_events(start_date: str, end_date: str):
 
         if event_list:
             result = "\n".join(event_list)
-            print(f"📅 Found {len(event_list)} events")  # Debug
+            print(f" Found {len(event_list)} events")  # Debug
             return result
         return "No events found for these dates"
 
     except HttpError as error:
-        print(f"❌ Calendar API error: {error}")
+        print(f" Calendar API error: {error}")
         return f"An error occurred: {error}"
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f" Unexpected error: {e}")
         return f"Error fetching events: {str(e)}"

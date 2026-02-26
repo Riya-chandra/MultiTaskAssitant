@@ -1,10 +1,14 @@
-langgraph 
-langgraph-checkpoint-sqlite
-langchain_community 
-langchain-openai
-langchain-google-genai 
-langchain-groq 
-langsmith
+langgraph==1.0.9
+langgraph-checkpoint==4.0.0
+langgraph-checkpoint-sqlite==3.0.3
+langgraph-prebuilt==1.0.8
+langchain==1.2.10
+langchain-core==1.2.16
+langchain-community==0.4.1
+langchain-openai==1.1.10
+langchain-google-genai==4.2.1
+langchain-groq==1.1.2
+langsmith==0.7.7
 tavily-python
 # notion-client
 slack_sdk
@@ -22,3 +26,4 @@ selenium
 webdriver_manager
 html2text
 bs4
+streamlit

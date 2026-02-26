@@ -106,13 +106,16 @@ python setup_auth.py
 
 ##6. Usage
 
-Option A: Web Interface (Recommended)
+Option A: Dashboard (Recommended)
 
-Launch the beautiful chat interface:
+Launch the dashboard interface:
 
 streamlit run ui.py
 
-mine yet to release!
+In the dashboard you can:
+- Save `GOOGLE_API_KEY` and `TAVILY_API_KEY` into `.env`
+- Validate Google OAuth using `credentials.json` / `token.json`
+- Test natural-language commands like calendar meeting scheduling directly
 
 Option B: Terminal Mode
 
@@ -173,3 +176,4 @@ My Request:Please stay updated with the new versions of the packages that i have
 
 
 
+work flow- the query is asked by the user through twilio and then this query hits the backend of the system and then the backend contact thorugh the post api and then LLM and langchain to give the or handle data to the other agent to use the prompt these prompts would handle the data
