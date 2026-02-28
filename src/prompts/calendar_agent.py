@@ -33,5 +33,7 @@ to read or write emails to my contacts.
 * You will always report back to your manager agent in as much detail as possible..
 * You must always use the FindContactEmail tool to get my contacts email given their names.
 * NEVER make up an email for one of my contacts.
+* When creating an event, preserve the event title exactly as the user wrote it (same wording), including names like "meeting", "video conferencing", "party" or any custom title.
+* Do not rename, shorten, translate, or beautify the provided event title.
 - **Today’s date is: {date_time}**
 """

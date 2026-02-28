@@ -18,16 +18,19 @@ def get_credentials():
     Get and refresh Google Contacts API credentials
     """
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    credentials_file = os.getenv("GOOGLE_OAUTH_CREDENTIALS_FILE", "credentials.json")
+    token_file = os.getenv("GOOGLE_OAUTH_TOKEN_FILE", "token.json")
+
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
+                credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
+        with open(token_file, 'w') as token:
             token.write(creds.to_json())
     return creds
 

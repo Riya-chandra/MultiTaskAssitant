@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from dateutil import parser
 from langsmith import traceable
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
@@ -19,11 +20,15 @@ def add_event_to_calendar(title: str, description: str, start_time: str):
         creds = get_credentials()
         service = build("calendar", "v3", credentials=creds)
 
+        event_title = title.strip()
 
         if "T" not in start_time:
             start_time = start_time + "T10:00:00"  # default 10 AM
-        # Convert the string to a datetime object
-        event_datetime = datetime.fromisoformat(start_time)
+        try:
+            event_datetime = datetime.fromisoformat(start_time)
+        except ValueError:
+            event_datetime = parser.parse(start_time)
+
         end_datetime = event_datetime + timedelta(hours=1)
         existing_events = service.events().list(
             calendarId="primary",
@@ -34,10 +39,10 @@ def add_event_to_calendar(title: str, description: str, start_time: str):
         ).execute().get("items", [])
 
         for event in existing_events:
-            if event.get("summary", "").lower() == title.lower():
+            if event.get("summary", "").lower() == event_title.lower():
                 return f"⚠️ Event already exists: {event.get('htmlLink')}"
         event = {
-            'summary': title,
+            'summary': event_title,
             'description': description,
             'start': {
                 'dateTime': event_datetime.isoformat(),
@@ -50,7 +55,7 @@ def add_event_to_calendar(title: str, description: str, start_time: str):
         }
 
         created = service.events().insert(calendarId='primary', body=event).execute()
-        return f"Event created successfully. Event ID: {event.get('id')}"
+        return f"Event created successfully. Title: {created.get('summary')}, Event ID: {created.get('id')}"
 
     except HttpError as error:
         return f"An error occurred: {error}"

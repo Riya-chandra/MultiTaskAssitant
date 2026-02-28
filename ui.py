@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import dotenv_values, load_dotenv, set_key
 import streamlit as st
 
@@ -29,24 +30,58 @@ def read_env_values() -> dict:
     return dotenv_values(env_path)
 
 
-@st.cache_resource
-def get_assistant() -> PersonalAssistant:
+def create_assistant() -> PersonalAssistant:
     return PersonalAssistant(None)
+
+
+def apply_session_env(key: str, value: str) -> None:
+    if value:
+        os.environ[key] = value.strip()
+
+
+def save_uploaded_google_credentials(uploaded_file) -> str:
+    session_id = st.session_state.get("session_id")
+    if not session_id:
+        session_id = str(abs(hash(str(st.session_state))))
+        st.session_state["session_id"] = session_id
+
+    session_dir = Path(".session_credentials") / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    credentials_file = session_dir / "credentials.json"
+    token_file = session_dir / "token.json"
+
+    credentials_file.write_bytes(uploaded_file.getvalue())
+
+    os.environ["GOOGLE_OAUTH_CREDENTIALS_FILE"] = str(credentials_file)
+    os.environ["GOOGLE_OAUTH_TOKEN_FILE"] = str(token_file)
+
+    return str(credentials_file)
 
 
 st.set_page_config(page_title="MultiTask Assistant Dashboard", page_icon="🤖", layout="wide")
 
 st.title("MultiTask Assistant Dashboard")
-st.caption("Set credentials and test natural-language commands for Calendar, Email, and Research")
+st.caption("Users can add their own credentials and test commands instantly")
+
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
+if "assistant" not in st.session_state:
+    st.session_state["assistant"] = None
 
 with st.sidebar:
     st.subheader("Status")
-    credentials_exists = os.path.exists("credentials.json")
-    token_exists = os.path.exists("token.json")
+    active_credentials_file = os.getenv("GOOGLE_OAUTH_CREDENTIALS_FILE", "credentials.json")
+    active_token_file = os.getenv("GOOGLE_OAUTH_TOKEN_FILE", "token.json")
+    credentials_exists = os.path.exists(active_credentials_file)
+    token_exists = os.path.exists(active_token_file)
     groq_key_exists = bool(os.getenv("GROQ_API_KEY"))
-    st.write(f"Google OAuth credentials.json: {'✅' if credentials_exists else '❌'}")
-    st.write(f"Google OAuth token.json: {'✅' if token_exists else '❌'}")
+    tavily_key_exists = bool(os.getenv("TAVILY_API_KEY"))
+    st.write(f"Google OAuth file: {'✅' if credentials_exists else '❌'}")
+    st.write(f"Google token file: {'✅' if token_exists else '❌'}")
     st.write(f"Groq API key: {'✅' if groq_key_exists else '❌'}")
+    st.write(f"Tavily API key: {'✅' if tavily_key_exists else '❌'}")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -68,55 +103,86 @@ with st.sidebar:
                 st.error(f"Groq failed: {exc}")
 
 
-st.subheader("1) Setup API Keys")
+st.subheader("1) User Credentials (Test Right Now)")
 env_values = read_env_values()
 
-with st.form("credentials_form"):
+with st.form("session_credentials_form"):
+    st.caption("These credentials are used for this session only (safe for demos/interviews).")
     groq_api_key = st.text_input(
-        "GROQ_API_KEY",
-        value=env_values.get("GROQ_API_KEY", ""),
+        "Groq API Key",
+        value="",
         type="password",
-        help="Required by current agents (model: groq/llama-3.3-70b-versatile)",
-    )
-    google_api_key = st.text_input(
-        "GOOGLE_API_KEY",
-        value=env_values.get("GOOGLE_API_KEY", ""),
-        type="password",
-        help="Used for Gemini via langchain-google-genai",
+        help="Required for assistant reasoning",
+        placeholder="gsk_...",
     )
     tavily_api_key = st.text_input(
-        "TAVILY_API_KEY",
-        value=env_values.get("TAVILY_API_KEY", ""),
+        "Tavily API Key (optional, for research commands)",
+        value="",
         type="password",
-        help="Used by web research tools",
+        placeholder="tvly-...",
     )
-    save_keys = st.form_submit_button("Save Keys to .env")
+    google_api_key = st.text_input(
+        "Google API Key (optional)",
+        value="",
+        type="password",
+        placeholder="AIza...",
+    )
+    uploaded_google_oauth = st.file_uploader(
+        "Upload Google OAuth credentials.json (for calendar/email)",
+        type=["json"],
+        accept_multiple_files=False,
+    )
+    apply_session = st.form_submit_button("Apply Session Credentials")
 
-if save_keys:
+if apply_session:
     try:
         if groq_api_key:
-            save_env_value("GROQ_API_KEY", groq_api_key)
-        if google_api_key:
-            save_env_value("GOOGLE_API_KEY", google_api_key)
+            apply_session_env("GROQ_API_KEY", groq_api_key)
         if tavily_api_key:
-            save_env_value("TAVILY_API_KEY", tavily_api_key)
-        st.success("Credentials saved to .env")
+            apply_session_env("TAVILY_API_KEY", tavily_api_key)
+        if google_api_key:
+            apply_session_env("GOOGLE_API_KEY", google_api_key)
+        if uploaded_google_oauth:
+            saved_path = save_uploaded_google_credentials(uploaded_google_oauth)
+            st.success(f"Google OAuth file loaded for this session: {saved_path}")
+
+        st.session_state["assistant"] = create_assistant()
+        st.success("Session credentials applied. You can test commands now.")
     except Exception as exc:
-        st.error(f"Could not save .env values: {exc}")
+        st.error(f"Could not apply credentials: {exc}")
+
+
+with st.expander("Owner-only: Save default keys to .env"):
+    st.caption("Use only for your own machine defaults. Not recommended for public demos.")
+    with st.form("owner_credentials_form"):
+        owner_groq = st.text_input("GROQ_API_KEY", value=env_values.get("GROQ_API_KEY", ""), type="password")
+        owner_google = st.text_input("GOOGLE_API_KEY", value=env_values.get("GOOGLE_API_KEY", ""), type="password")
+        owner_tavily = st.text_input("TAVILY_API_KEY", value=env_values.get("TAVILY_API_KEY", ""), type="password")
+        save_defaults = st.form_submit_button("Save to .env")
+
+    if save_defaults:
+        try:
+            if owner_groq:
+                save_env_value("GROQ_API_KEY", owner_groq)
+            if owner_google:
+                save_env_value("GOOGLE_API_KEY", owner_google)
+            if owner_tavily:
+                save_env_value("TAVILY_API_KEY", owner_tavily)
+            st.success("Default credentials saved to .env")
+        except Exception as exc:
+            st.error(f"Could not save .env values: {exc}")
 
 
 st.subheader("2) Google OAuth Files")
-st.write("Place `credentials.json` in the project root. Then click validate to generate/refresh `token.json`.")
+st.write("Either upload OAuth credentials above, or place `credentials.json` in project root for default flow.")
 
 if not credentials_exists:
-    st.warning("`credentials.json` is missing. Calendar and Gmail actions will fail until you add it.")
+    st.warning("Google OAuth credentials are missing for current session. Calendar and Gmail actions will fail.")
 
 
 st.subheader("3) Test Assistant Command")
 st.write("Example: Please set up my calendar meeting on 24th March at 4 PM with title Team Sync")
-
-if "history" not in st.session_state:
-    st.session_state["history"] = []
+st.caption("Tip: write exact event name. The assistant will save the same name in calendar.")
 
 command_text = st.text_area(
     "Enter your command",
@@ -130,12 +196,12 @@ if st.button("Run Command", type="primary"):
     else:
         if not os.getenv("GROQ_API_KEY"):
             st.error("⚠️ GROQ_API_KEY is not set. Please add it in the credentials section above and reload the page.")
-        elif not os.path.exists("credentials.json"):
-            st.warning("⚠️ credentials.json is missing. Calendar/Email operations may fail.")
         else:
             with st.spinner("Running assistant..."):
                 try:
-                    assistant = get_assistant()
+                    if st.session_state["assistant"] is None:
+                        st.session_state["assistant"] = create_assistant()
+                    assistant = st.session_state["assistant"]
                     message = (
                         f"Message: {command_text.strip()}\n"
                         f"Current Date/time: {get_current_date_time()}"
@@ -152,6 +218,8 @@ if st.button("Run Command", type="primary"):
                     error_message = str(exc)
                     if "401" in error_message or "invalid_api_key" in error_message.lower():
                         st.error("🔑 **Groq API Key Invalid**\n\nYour GROQ_API_KEY is either wrong, expired, or inactive. Get a valid key from https://console.groq.com/keys and update it in the credentials form above, then refresh this page.")
+                    elif "deleted_client" in error_message.lower():
+                        st.error("🔐 **Google OAuth Client Deleted**\n\nUpload a fresh OAuth `credentials.json` in section 1 (or replace root credentials.json), then validate again.")
                     elif "credentials.json" in error_message.lower() or "token.json" in error_message.lower():
                         st.error(f"🔐 **Google OAuth Issue**: {error_message}\n\nEnsure credentials.json is present and click 'Validate Google' in the sidebar.")
                     else:
