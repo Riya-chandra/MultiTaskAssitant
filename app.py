@@ -1,5 +1,6 @@
 import time
 import sqlite3
+from pathlib import Path
 from dotenv import load_dotenv
 from src.channels.telegram import TelegramChannel
 from src.agents.personal_assistant import PersonalAssistant
@@ -8,7 +9,9 @@ from src.agents.personal_assistant import PersonalAssistant
 load_dotenv()
 
 # Initialize sqlite3 DB for saving agent memory
-conn = sqlite3.connect("db/checkpoints.sqlite", check_same_thread=False)
+db_path = Path(__file__).resolve().parent / "db" / "checkpoints.sqlite"
+db_path.parent.mkdir(parents=True, exist_ok=True)
+conn = sqlite3.connect(db_path, check_same_thread=False)
 
 # Use telegram for communicating with the agent
 telegram = TelegramChannel()
